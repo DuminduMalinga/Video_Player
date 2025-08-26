@@ -167,6 +167,20 @@ class _VideoHomeScreenState extends State<VideoHomeScreen> {
     );
   }
 
+  void _fastForward() {
+    if (_controller == null) return;
+    _controller!.seekTo(
+      _controller!.value.position + const Duration(seconds: 30),
+    );
+  }
+
+  void _fastBackward() {
+    if (_controller == null) return;
+    _controller!.seekTo(
+      _controller!.value.position - const Duration(seconds: 30),
+    );
+  }
+
   Future<void> _refreshPlaylist() async {
     if (_currentVideoFile == null) return;
     Directory folder = _currentVideoFile!.parent;
@@ -449,18 +463,6 @@ class _VideoHomeScreenState extends State<VideoHomeScreen> {
                             horizontal: 12,
                             vertical: 6,
                           ),
-                          // decoration: BoxDecoration(
-                          //   color: Colors.black.withOpacity(0.3),
-                          //   borderRadius: BorderRadius.circular(15),
-                          // ),
-                          // child: Text(
-                          //   '${_currentIndex + 1} of ${_playlist.length}',
-                          //   style: const TextStyle(
-                          //     color: Colors.white,
-                          //     fontSize: 14,
-                          //     fontWeight: FontWeight.w500,
-                          //   ),
-                          // ),
                         )
                       else
                         const Text(
@@ -474,6 +476,20 @@ class _VideoHomeScreenState extends State<VideoHomeScreen> {
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          if (_playlist.length > 1) ...[
+                            _button(
+                              Icons.skip_previous,
+                              _controller != null
+                                  ? () => _previousVideo()
+                                  : null,
+                            ),
+                            const SizedBox(width: 8),
+                            _button(
+                              Icons.skip_next,
+                              _controller != null ? () => _nextVideo() : null,
+                            ),
+                            const SizedBox(width: 8),
+                          ],
                           _button(
                             Icons.playlist_play,
                             _playlist.isEmpty ? null : _showPlaylist,
@@ -549,8 +565,8 @@ class _VideoHomeScreenState extends State<VideoHomeScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         _controlButton(
-                          Icons.skip_previous,
-                          _controller != null ? () => _previousVideo() : null,
+                          Icons.fast_rewind,
+                          _controller != null ? _fastBackward : null,
                         ),
                         _controlButton(
                           Icons.replay_10,
@@ -562,8 +578,8 @@ class _VideoHomeScreenState extends State<VideoHomeScreen> {
                           _controller != null ? _seekForward : null,
                         ),
                         _controlButton(
-                          Icons.skip_next,
-                          _controller != null ? () => _nextVideo() : null,
+                          Icons.fast_forward,
+                          _controller != null ? _fastForward : null,
                         ),
                       ],
                     ),
