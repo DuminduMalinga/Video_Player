@@ -428,7 +428,7 @@ class _VideoHomeScreenState extends State<VideoHomeScreen> {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: const Text(
-                      'Video Player',
+                      'CineWave',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 20,
@@ -449,18 +449,18 @@ class _VideoHomeScreenState extends State<VideoHomeScreen> {
                             horizontal: 12,
                             vertical: 6,
                           ),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.3),
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                          child: Text(
-                            '${_currentIndex + 1} of ${_playlist.length}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
+                          // decoration: BoxDecoration(
+                          //   color: Colors.black.withOpacity(0.3),
+                          //   borderRadius: BorderRadius.circular(15),
+                          // ),
+                          // child: Text(
+                          //   '${_currentIndex + 1} of ${_playlist.length}',
+                          //   style: const TextStyle(
+                          //     color: Colors.white,
+                          //     fontSize: 14,
+                          //     fontWeight: FontWeight.w500,
+                          //   ),
+                          // ),
                         )
                       else
                         const Text(
@@ -481,7 +481,7 @@ class _VideoHomeScreenState extends State<VideoHomeScreen> {
                           const SizedBox(width: 8),
                           _button(
                             _isMuted ? Icons.volume_off : Icons.volume_up,
-                            _toggleMute,
+                            _controller != null ? _toggleMute : null,
                           ),
                         ],
                       ),
@@ -492,21 +492,21 @@ class _VideoHomeScreenState extends State<VideoHomeScreen> {
             ),
 
             // Bottom Controls
-            if (_controller != null && _controller!.value.isInitialized)
-              Positioned(
-                bottom: 30,
-                left: 20,
-                right: 20,
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.deepPurple.withOpacity(0.7),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Progress
+            Positioned(
+              bottom: 30,
+              left: 20,
+              right: 20,
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.deepPurple.withOpacity(0.7),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Progress
+                    if (_controller != null && _controller!.value.isInitialized)
                       VideoProgressIndicator(
                         _controller!,
                         allowScrubbing: true,
@@ -515,36 +515,62 @@ class _VideoHomeScreenState extends State<VideoHomeScreen> {
                           backgroundColor: Colors.white24,
                           bufferedColor: Colors.white54,
                         ),
+                      )
+                    else
+                      Container(
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.white24,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
                       ),
-                      const SizedBox(height: 10),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            _formatDuration(_controller!.value.position),
-                            style: const TextStyle(color: Colors.white70),
-                          ),
-                          Text(
-                            _formatDuration(_controller!.value.duration),
-                            style: const TextStyle(color: Colors.white70),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _controlButton(Icons.skip_previous, _previousVideo),
-                          _controlButton(Icons.replay_10, _seekBackward),
-                          _playPauseButton(),
-                          _controlButton(Icons.forward_10, _seekForward),
-                          _controlButton(Icons.skip_next, _nextVideo),
-                        ],
-                      ),
-                    ],
-                  ),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          _controller != null &&
+                                  _controller!.value.isInitialized
+                              ? _formatDuration(_controller!.value.position)
+                              : '00:00',
+                          style: const TextStyle(color: Colors.white70),
+                        ),
+                        Text(
+                          _controller != null &&
+                                  _controller!.value.isInitialized
+                              ? _formatDuration(_controller!.value.duration)
+                              : '00:00',
+                          style: const TextStyle(color: Colors.white70),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _controlButton(
+                          Icons.skip_previous,
+                          _controller != null ? () => _previousVideo() : null,
+                        ),
+                        _controlButton(
+                          Icons.replay_10,
+                          _controller != null ? _seekBackward : null,
+                        ),
+                        _playPauseButton(),
+                        _controlButton(
+                          Icons.forward_10,
+                          _controller != null ? _seekForward : null,
+                        ),
+                        _controlButton(
+                          Icons.skip_next,
+                          _controller != null ? () => _nextVideo() : null,
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
+            ),
           ],
         ),
       ),
@@ -563,11 +589,13 @@ class _VideoHomeScreenState extends State<VideoHomeScreen> {
     );
   }
 
-  Widget _controlButton(IconData icon, VoidCallback onTap) {
+  Widget _controlButton(IconData icon, VoidCallback? onTap) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10),
       child: Material(
-        color: Colors.pinkAccent.withOpacity(0.8),
+        color: onTap != null
+            ? Colors.pinkAccent.withOpacity(0.8)
+            : Colors.grey.withOpacity(0.5),
         shape: const CircleBorder(),
         child: IconButton(
           icon: Icon(icon, color: Colors.white),
@@ -579,10 +607,11 @@ class _VideoHomeScreenState extends State<VideoHomeScreen> {
   }
 
   Widget _playPauseButton() {
+    bool hasController = _controller != null;
     return Container(
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: Colors.pinkAccent,
+        color: hasController ? Colors.pinkAccent : Colors.grey,
         boxShadow: const [
           BoxShadow(color: Colors.white24, blurRadius: 6, offset: Offset(0, 3)),
         ],
@@ -593,7 +622,7 @@ class _VideoHomeScreenState extends State<VideoHomeScreen> {
           color: Colors.white,
         ),
         iconSize: 52,
-        onPressed: _togglePlayPause,
+        onPressed: hasController ? _togglePlayPause : null,
       ),
     );
   }
