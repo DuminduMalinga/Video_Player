@@ -15,6 +15,8 @@ class _VideoHomeScreenState extends State<VideoHomeScreen> {
   final List<String> _playlist = [];
   int _currentIndex = 0;
   bool _isPlaying = false;
+  bool _isMuted = false;
+  bool _isFullScreen = false;
 
   Future<void> _pickVideo() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
@@ -47,7 +49,7 @@ class _VideoHomeScreenState extends State<VideoHomeScreen> {
       });
   }
 
-  Future<void> _togglePlayPause() async {
+  void _togglePlayPause() {
     if (_controller == null) return;
     setState(() {
       if (_controller!.value.isPlaying) {
@@ -58,6 +60,31 @@ class _VideoHomeScreenState extends State<VideoHomeScreen> {
         _isPlaying = true;
       }
     });
+  }
+
+  void _toggleMute() {
+    if (_controller == null) return;
+    setState(() {
+      if (_isMuted) {
+        _controller!.setVolume(1.0);
+        _isMuted = false;
+      } else {
+        _controller!.setVolume(0.0);
+        _isMuted = true;
+      }
+    });
+  }
+
+  void _seekForward() {
+    if (_controller == null) return;
+    final newPos = _controller!.value.position + const Duration(seconds: 10);
+    _controller!.seekTo(newPos);
+  }
+
+  void _seekBackward() {
+    if (_controller == null) return;
+    final newPos = _controller!.value.position - const Duration(seconds: 10);
+    _controller!.seekTo(newPos);
   }
 
   Future<void> _nextVideo() async {
@@ -78,6 +105,10 @@ class _VideoHomeScreenState extends State<VideoHomeScreen> {
     return path.split(RegExp(r'[\\/]')).last;
   }
 
+  String _formatDuration(Duration d) {
+    return "${d.inMinutes.remainder(60).toString().padLeft(2, '0')}:${d.inSeconds.remainder(60).toString().padLeft(2, '0')}";
+  }
+
   @override
   void dispose() {
     _controller?.dispose();
@@ -87,12 +118,13 @@ class _VideoHomeScreenState extends State<VideoHomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.black,
       body: Container(
         width: double.infinity,
         height: double.infinity,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Colors.deepPurple, Colors.pink],
+            colors: [Color(0xFF0F2027), Color(0xFF203A43), Color(0xFF2C5364)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -117,7 +149,7 @@ class _VideoHomeScreenState extends State<VideoHomeScreen> {
                       onPressed: _pickVideo,
                     ),
                     const Text(
-                      'Video Player',
+                      'Modern Video Player',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 22,
@@ -125,8 +157,34 @@ class _VideoHomeScreenState extends State<VideoHomeScreen> {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.settings, color: Colors.white),
-                      onPressed: () {},
+                      icon: const Icon(
+                        Icons.playlist_play,
+                        color: Colors.white,
+                      ),
+                      onPressed: () {
+                        // Show Playlist
+                        showModalBottomSheet(
+                          backgroundColor: Colors.black87,
+                          context: context,
+                          builder: (_) {
+                            return ListView.builder(
+                              itemCount: _playlist.length,
+                              itemBuilder: (ctx, i) {
+                                return ListTile(
+                                  title: Text(
+                                    _getFileName(_playlist[i]),
+                                    style: const TextStyle(color: Colors.white),
+                                  ),
+                                  onTap: () {
+                                    Navigator.pop(context);
+                                    _loadVideo(_playlist[i]);
+                                  },
+                                );
+                              },
+                            );
+                          },
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -139,40 +197,53 @@ class _VideoHomeScreenState extends State<VideoHomeScreen> {
                   child: _controller != null && _controller!.value.isInitialized
                       ? AspectRatio(
                           aspectRatio: _controller!.value.aspectRatio,
-                          child: VideoPlayer(_controller!),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: VideoPlayer(_controller!),
+                          ),
                         )
                       : const Icon(
                           Icons.videocam,
                           size: 100,
-                          color: Colors.white,
+                          color: Colors.white54,
                         ),
                 ),
               ),
 
-              // Video Title
-              Expanded(
-                flex: 1,
-                child: Column(
+              // Progress bar + duration
+              if (_controller != null && _controller!.value.isInitialized)
+                Column(
                   children: [
-                    Text(
-                      _controller != null && _playlist.isNotEmpty
-                          ? _getFileName(_playlist[_currentIndex])
-                          : "No Video Selected",
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
+                    VideoProgressIndicator(
+                      _controller!,
+                      allowScrubbing: true,
+                      colors: const VideoProgressColors(
+                        playedColor: Colors.pink,
+                        backgroundColor: Colors.white24,
+                        bufferedColor: Colors.blueGrey,
                       ),
-                      textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      "Video Player",
-                      style: TextStyle(color: Colors.white70, fontSize: 14),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            _formatDuration(_controller!.value.position),
+                            style: const TextStyle(color: Colors.white70),
+                          ),
+                          Text(
+                            _formatDuration(_controller!.value.duration),
+                            style: const TextStyle(color: Colors.white70),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
-              ),
 
               // Controls
               Row(
@@ -181,6 +252,11 @@ class _VideoHomeScreenState extends State<VideoHomeScreen> {
                   IconButton(
                     icon: const Icon(Icons.skip_previous, color: Colors.white),
                     onPressed: _previousVideo,
+                    iconSize: 36,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.replay_10, color: Colors.white),
+                    onPressed: _seekBackward,
                     iconSize: 36,
                   ),
                   Container(
@@ -202,13 +278,47 @@ class _VideoHomeScreenState extends State<VideoHomeScreen> {
                     ),
                   ),
                   IconButton(
+                    icon: const Icon(Icons.forward_10, color: Colors.white),
+                    onPressed: _seekForward,
+                    iconSize: 36,
+                  ),
+                  IconButton(
                     icon: const Icon(Icons.skip_next, color: Colors.white),
                     onPressed: _nextVideo,
                     iconSize: 36,
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
+
+              // Bottom Controls
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16, top: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    IconButton(
+                      icon: Icon(
+                        _isMuted ? Icons.volume_off : Icons.volume_up,
+                        color: Colors.white,
+                      ),
+                      onPressed: _toggleMute,
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        _isFullScreen
+                            ? Icons.fullscreen_exit
+                            : Icons.fullscreen,
+                        color: Colors.white,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _isFullScreen = !_isFullScreen;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
